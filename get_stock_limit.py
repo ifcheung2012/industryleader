@@ -1,6 +1,6 @@
 import pandas as pd
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from jsonpath import jsonpath
 import numpy as np
 
@@ -108,31 +108,43 @@ def grade(x,dt1,dt2):
 
 
 #指定日期的断板数,lbs:连板数,dt1/dt2相连两天; 统计有哪些股票昨天连板今日止步的；
-def today_db(lbs:int,dt_last,dt_end) -> pd.DataFrame:
+def get_stock_dbs_daily(lbs:int,dt_end) -> pd.DataFrame:
+    """
+    999
+    """
 
-    dt_end  = datetime.today().strftime('%Y%m%d')
-    dt_last = get_calendar_lastday('20220501',dt_end,1,dt_end)  #todo 这里优化一下
+    dt_end  = datetime.today().strftime('%Y%m%d') if (dt_end == '') else dt_end
     
+    dt_last = get_calendar_lastday('20220501',1,dt_end)  #todo 这里优化一下
+    dt_last= datetime.strptime(dt_last,'%Y-%m-%d').strftime('%Y%m%d') 
+
     df_last = get_zt_stock_rank(dt_last)
     df_end  = get_zt_stock_rank(dt_end)
-    # print(dt_end)
+
     dftp = df_last.loc[(df_last.连板数==lbs)]
     dfres = dftp[~dftp.股票代码.isin(df_end.股票代码)]
 
-    return df_end
-# today_db(3,'20220525','20220526')
+    return dfres
+
 
 #统计今日连板
-# def today_lb(lbs:int , dt) -> pd.DataFrame:
-#     df = get_zt_stock_rank(dt)
-#     return df.loc[(df.连板数 >= lbs)]
+def get_stock_limitup_daily(lbs:int) -> pd.DataFrame:
+
+    today = (datetime.today() + timedelta(days= 1)).strftime('%Y%m%d')
+
+    dt_s = get_calendar_lastday('20220101',1,today).replace('-','')
+
+    df = get_zt_stock_rank(dt_s)
+    return df.loc[(df.连板数 >= lbs)]
 
 # dfres = today_lb(1,'20220526')
 # dfr=dfres.merge(df_res,on='股票代码',how='left')
 
 if __name__ == '__main__' :
-    print(today_db(1,'20220501',''))
+    # print(get_stock_dbs_daily(3,'20220504'))
+    print(get_stock_limitup_daily(3))
     # print(get_zt_stock_rank())
+    pass
 
 
 

@@ -12,7 +12,6 @@ def get_block_stocks_by_hybk(hybk: str = None) -> pd.DataFrame:
     获取指定各板块下的股票代码
     Parameters
     ----------
-
     Returns
     -------
     DataFrame
@@ -66,12 +65,12 @@ def get_stocks_block() -> pd.DataFrame:
     for hybm in df_block['行业编码']:
         df_tmp = get_block_stocks_by_hybk(hybm)
         df_res = pd.concat([df_res,df_tmp])
-
-    return df_res
+    df_r=pd.merge(df_res,df_block,on='行业编码',how='left')
+    return df_r
 # df_res.to_excel('out.xls',sheet_name='板块股票')
 
 if __name__ == '__main__':
     import urllib3
     urllib3.disable_warnings()
 
-    get_stocks_block()
+    print(get_stocks_block())

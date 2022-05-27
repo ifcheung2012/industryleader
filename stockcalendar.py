@@ -1,7 +1,7 @@
 
 import pandas as pd
 import efinance as ef
-from datetime import datetime
+from datetime import datetime, timedelta
 import urllib3
 import numpy as np
 
@@ -33,7 +33,7 @@ def calendar_stock(beg:str,end:str) -> pd.DataFrame:
 
 
 
-def get_calendar_lastday(beg: str,end: str , N: int, date:  str = None) -> str:
+def get_calendar_lastday(beg: str, N: int, date:  str = None) -> str:
     '''
     获取指定指定日期的上N个交易日
     由于网络抓取，还是框一下数据范围
@@ -57,24 +57,37 @@ def get_calendar_lastday(beg: str,end: str , N: int, date:  str = None) -> str:
     else:
         date = datetime.strptime(date,'%Y%m%d').strftime('%Y-%m-%d')
 
-    calendar = calendar_stock(beg,end)
+    calendar = calendar_stock(beg, date.replace('-',''))
 
     dt_cur = calendar.loc[(calendar.日期 == date)]
-    # todo:当入参日期不是交易日期时，无法从交易日期库中检索到，会产生错误
-    # if np.isnan(dt_cur['日期'][0]):
-    #     return '19990909'
+    
+    #当入参日期不是交易日，则向前检索，把前一个交易日作为基准日期(此时N同步调整为0 )
+    i=1
+    if dt_cur.empty:
+        while i<20:
+
+            yesterday = (datetime.strptime(date,'%Y-%m-%d') - timedelta(days= i)).strftime('%Y-%m-%d')
+            dt_cur = calendar.loc[(calendar.日期 == yesterday)]
+            if dt_cur.empty: 
+                i   += 1
+                continue
+            N -= 1
+            break
+
     ms = calendar.loc[(calendar.index==dt_cur.index[0])]
     dt_pre = calendar.loc[(calendar.index == ms.index[0] - N)]
-   
+
     return dt_pre.日期.tolist()[0]
 
+    def calenda_today():
+        dt_td = datetime.today().strftime('%Y-%m-%d')
 
 if __name__ == '__main__':
     
     urllib3.disable_warnings()
 
     end_dt = datetime.today().strftime('%Y%m%d')
-    dt2 = get_calendar_lastday('20220501',end_dt,5,'20220519')
+    dt2 = get_calendar_lastday('20220401',1,'20220503')
 
     print(dt2)
     
