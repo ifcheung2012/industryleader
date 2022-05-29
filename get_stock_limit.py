@@ -128,21 +128,24 @@ def get_stock_dbs_daily(lbs:int,dt_end) -> pd.DataFrame:
 
 
 #统计今日连板
-def get_stock_limitup_daily(lbs:int) -> pd.DataFrame:
+def get_stock_limitup_daily(lbs:int,date:str) -> pd.DataFrame:
 
-    today = (datetime.today() + timedelta(days= 1)).strftime('%Y%m%d')
-
-    dt_s = get_calendar_lastday('20220101',1,today).replace('-','')
-
+    tomorrow = (datetime.strptime(date,'%Y%m%d') + timedelta(days= 1)).strftime('%Y%m%d')
+    
+    dt_s = get_calendar_lastday('20220101',1,tomorrow).replace('-','')
+    
     df = get_zt_stock_rank(dt_s)
-    return df.loc[(df.连板数 >= lbs)]
+    dd = df.loc[(df.连板数 >= lbs)]
+
+    return dd
 
 # dfres = today_lb(1,'20220526')
 # dfr=dfres.merge(df_res,on='股票代码',how='left')
 
 if __name__ == '__main__' :
     # print(get_stock_dbs_daily(3,'20220504'))
-    print(get_stock_limitup_daily(3))
+    dfr = get_stock_limitup_daily(5,'20220526')
+    print(dfr)
     # print(get_zt_stock_rank())
     pass
 

@@ -12,6 +12,7 @@ def get_block_stocks_by_hybk(hybk: str = None) -> pd.DataFrame:
     获取指定各板块下的股票代码
     Parameters
     ----------
+        hybk :字符串  行业板块编码（东方财富） 如:BK0464
     Returns
     -------
     DataFrame
@@ -19,7 +20,7 @@ def get_block_stocks_by_hybk(hybk: str = None) -> pd.DataFrame:
     Fields
     ------
     ``['板块涨跌幅','行业编码','上市板块','所属行业','主力资金净流入','今日主力净流入最大股名称','今日主力净流入最大股编码']``
-    https://push2.eastmoney.com/api/qt/clist/get?fid=f62&po=1&pz=500&pn=1&np=1&fltt=2&invt=2&ut=b2884a393a59ad64002292a3e90d46a5&fields=f12,f14&fs=b:BK0428
+    URL: https://push2.eastmoney.com/api/qt/clist/get?fid=f62&po=1&pz=500&pn=1&np=1&fltt=2&invt=2&ut=b2884a393a59ad64002292a3e90d46a5&fields=f12,f14&fs=b:BK0428
     """
     if hybk=='':
         return None
@@ -60,6 +61,20 @@ def get_block_stocks_by_hybk(hybk: str = None) -> pd.DataFrame:
 
 # 获取所有板块与股票及两者的对应关系
 def get_stocks_block() -> pd.DataFrame:
+    """
+    获取 今天 所有行业板块下的股票代码 约4k多只 
+    #todo 目前未区分 主板、创业板、科创板及ST
+    #todo 这部分数据仅能每日获取 建议最好存到数据库里
+    Parameters
+    ----------
+    Returns
+    -------
+    DataFrame
+        今日个股与板块的对应关系，及板块主力资金净流入、板块涨跌幅行情
+    Fields
+    ------
+    ``['股票代码','股票名称','行业编码','所属行业','板块涨跌幅','主力资金净流入','今日主力净流入最大股名称','今日主力净流入最大股编码']``
+    """
     df_res = pd.DataFrame(columns=['行业编码','股票代码','股票名称'])
     df_block = get_block_inflow()
     for hybm in df_block['行业编码']:
@@ -73,4 +88,6 @@ if __name__ == '__main__':
     import urllib3
     urllib3.disable_warnings()
 
-    print(get_stocks_block())
+    df = get_stocks_block()
+    df['日期'] = '20220527'
+    print(df)
