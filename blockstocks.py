@@ -75,12 +75,19 @@ def get_stocks_block() -> pd.DataFrame:
     ------
     ``['股票代码','股票名称','行业编码','所属行业','板块涨跌幅','主力资金净流入','今日主力净流入最大股名称','今日主力净流入最大股编码']``
     """
+    import os
+    datafile = '板块股票清单.xlsx'
+    if os.path.exists(datafile):
+        return pd.DataFrame(pd.read_excel(datafile,converters={'股票代码':str}))
     df_res = pd.DataFrame(columns=['行业编码','股票代码','股票名称'])
     df_block = get_block_inflow()
     for hybm in df_block['行业编码']:
         df_tmp = get_block_stocks_by_hybk(hybm)
         df_res = pd.concat([df_res,df_tmp])
     df_r=pd.merge(df_res,df_block,on='行业编码',how='left')
+
+    df_r.to_excel('板块股票清单.xlsx') #最新的板块股票对应关系表 下载到本地 下次直接加载excel
+
     return df_r
 # df_res.to_excel('out.xls',sheet_name='板块股票')
 
@@ -88,6 +95,15 @@ if __name__ == '__main__':
     import urllib3
     urllib3.disable_warnings()
 
-    df = get_stocks_block()
-    df['日期'] = '20220527'
-    print(df)
+    # df = get_stocks_block()
+    # df['日期'] = '20220527'
+    # # print(df)
+    # print(df)
+    datafile = '板块股票清单.xlsx'
+    dd = pd.DataFrame(pd.read_excel(datafile,converters={'股票代码':str}))
+    
+    print(dd)
+    pass
+
+
+
