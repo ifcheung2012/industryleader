@@ -87,7 +87,15 @@ if __name__ == '__main__':
     urllib3.disable_warnings()
 
     end_dt = datetime.today().strftime('%Y%m%d')
-    dt2 = get_calendar_lastday('20220401',1,'20220503')
+    # dt2 = get_calendar_lastday('20220401',1,'20220503')
 
-    print(dt2)
+    dt_r = []
+    i=1
+    while i<10:
+        dt_t = get_calendar_lastday('20220401',i,end_dt)
+        
+        dt_r.append(dt_t.replace('-',''))
+        i += 1
+
+    print(dt_r)
     
