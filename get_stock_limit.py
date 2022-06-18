@@ -144,10 +144,12 @@ def get_stock_limitup_daily(lbs:int,date:str) -> pd.DataFrame:
 
 if __name__ == '__main__' :
     # print(get_stock_dbs_daily(3,'20220504'))
-    dfr = get_stock_limitup_daily(5,'20220526')
-    print(dfr)
+    # dfr = get_stock_limitup_daily(2,'20220602')
+    dfr = get_zt_stock_rank('20220617').sort_values(by=['连板数','炸板次数'],ascending=False)
+    print(dfr.to_excel('~/Downloads/20220617-3.xlsx'))
     # print(get_zt_stock_rank())
     pass
+
 
 
 

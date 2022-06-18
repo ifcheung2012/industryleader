@@ -101,8 +101,8 @@ if __name__ == '__main__':
     # print(df)
     datafile = '板块股票清单.xlsx'
     dd = pd.DataFrame(pd.read_excel(datafile,converters={'股票代码':str}))
-    
-    print(dd)
+    df_block = get_block_inflow()
+    print(df_block)
     pass
 
 
