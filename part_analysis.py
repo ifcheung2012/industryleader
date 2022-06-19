@@ -97,6 +97,54 @@ def get_block_stock_rise(df_stock_block:pd.DataFrame,block:str,rise_n) -> pd.Dat
     
     return df_stock_lst[['行业编码','所属行业','股票代码','股票名称']]
 
+
+def get_stock_limitup_gantt(days,lbs) -> pd.DataFrame:
+    '''
+    days:向前统计多少个交易日，比如：至今两百个交易日区间的数据
+    lbs:连板数，即：连板数大于几的才纳入统计范围；
+    '''
+    end_dt = datetime.today().strftime('%Y%m%d')
+
+    dt_r,i,n,lbs = [],1,days,1
+
+    while i<n:
+        dt_t = get_calendar_lastday('20210101',i,end_dt)
+        dt_r.append(dt_t.replace('-',''))
+        i += 1
+
+    dt_range = dt_r[::-1]
+    df_res = pd.DataFrame()
+    for dt in dt_range :
+        df_limitup = get_stock_limitup_daily(lbs,dt)
+        df_res = pd.concat([df_res,df_limitup])
+
+    # df = pd.read_excel('~/Downloads/data.xlsx',sheet_name='Sheet2')
+    df = df_res[['股票名称','日期','连板数']]
+    df1 = df.dropna()
+    df2 = df1.groupby(['日期','股票名称']).agg({'连板数':'mean'}).reset_index().sort_values(by=['股票名称','日期'])
+    # df2.groupby(['股票名称']).get_group('中通客车')
+    df3 =  df2.drop_duplicates(['股票名称'])
+    df4 = pd.DataFrame(columns = dt_range)
+    for i in df3['股票名称']:
+        dft = df2.groupby(['股票名称']).get_group(i).T.reset_index().drop(1,axis=0)
+        ar = np.array(dft)
+        lst = ar.tolist()
+        dft.columns = lst[0]
+        dft['股票名称'] = i
+        dft.reset_index().drop(index = 0,axis=0)
+        df4 = pd.concat([dft,df4])
+
+    df5 = df4.fillna(0).loc[(df4.日期!='日期')]
+    df5.insert(0,'股票名称',df5.pop('股票名称'))
+    df6 = df5.reindex(sorted(df5.columns), axis=1)
+
+    df7 = df6.sort_values(by=dt_range[::-1],ascending=True)
+
+    df8 = df7.drop(['日期'],axis=1).reset_index(drop=True)
+    df8['max'] = df8[dt_range].max(axis=1)
+
+    return df8
+
 if __name__ == '__main__' :
     import urllib3
     urllib3.disable_warnings()
