@@ -6,10 +6,11 @@ from blockstocks import get_stocks_block
 import efinance as ef
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from pandas import DataFrame, Int64Dtype
 from get_stock_limit import get_stock_dbs_daily , get_stock_limitup_daily
 from stockcalendar import get_calendar_lastday
-
+from pandas.io.formats.style import Styler
 
 def get_part_analysis_blocklbs(df_stock_block:pd.DataFrame,date:str) -> pd.DataFrame:
     
@@ -98,11 +99,18 @@ def get_block_stock_rise(df_stock_block:pd.DataFrame,block:str,rise_n) -> pd.Dat
     return df_stock_lst[['行业编码','所属行业','股票代码','股票名称']]
 
 
-def get_stock_limitup_gantt(days,lbs) -> pd.DataFrame:
-    '''
-    days:向前统计多少个交易日，比如：至今两百个交易日区间的数据
-    lbs:连板数，即：连板数大于几的才纳入统计范围；
-    '''
+def get_stock_limitup_gantt(days,lbs):
+    """
+    获取指定日期范围内，有过连板(连板数不低于lbs)的个股及其甘特图
+    Parameters
+    ----------
+        days: Int  向前统计多少个交易日，比如：200 至今两百个交易日区间的数据
+        lbs:  Int  连板数，即：连板数大于几的才纳入统计范围； 比如:连板3板
+    Returns
+    -------
+    Styler,DataFrame
+        带样式数据(格式：Styler)，不带样式的数据（格式：dataframe）
+    """
     end_dt = datetime.today().strftime('%Y%m%d')
 
     dt_r,i,n,lbs = [],1,days,1
@@ -134,7 +142,7 @@ def get_stock_limitup_gantt(days,lbs) -> pd.DataFrame:
         dft.reset_index().drop(index = 0,axis=0)
         df4 = pd.concat([dft,df4])
 
-    df5 = df4.fillna(0).loc[(df4.日期!='日期')]
+    df5 = df4.loc[(df4.日期!='日期')]
     df5.insert(0,'股票名称',df5.pop('股票名称'))
     df6 = df5.reindex(sorted(df5.columns), axis=1)
 
@@ -143,32 +151,59 @@ def get_stock_limitup_gantt(days,lbs) -> pd.DataFrame:
     df8 = df7.drop(['日期'],axis=1).reset_index(drop=True)
     df8['max'] = df8[dt_range].max(axis=1)
 
-    return df8
+    #设计渐变样式 gantt
+    
+    import seaborn as sns
+
+    cm =  sns.light_palette('green',as_cmap=True)
+    def color_negative_red(val):
+        color = 'gray' if val < 1 else 'red'
+        return 'color: %s' % color
+
+    def makepretty(styler):
+        styler.background_gradient(cmap=cm,subset=dt_range)
+        c,i = [],0
+        while i < len(dt_range):
+            c.append('{:0}') 
+            i += 1
+        styler.format(dict(zip(dt_range,c)))
+        # styler.set_caption("期间连板情况排行")
+        # styler.hide_index()
+        return styler
+    df9 =  df8.loc[(df8['max']>4)] #只统计有过4板及以上的股票
+
+    return df9.style.pipe(makepretty),df9
 
 if __name__ == '__main__' :
     import urllib3
     urllib3.disable_warnings()
-    df_stock_block = get_stocks_block()
-    dt_s,dt_e = '20220601','20220602'
-    # df_s = get_part_analysis_lbs_promotion(df_stock_block,dt_s)
-    df_e = get_part_analysis_blocklbs(df_stock_block,dt_e)
 
-    df_stocks_byblock = get_block_stock_rise(df_stock_block,'BK0464',2)
-    # df_block = get_block_inflow()
-    df_limit_byd = get_stock_limitup_daily(2,'20220602').sort_values(by=['连板数'],ascending=False)
-    # dfres_e =  pd.merge(df_block,df_e,on='行业编码',how='left')
-    df_res =  pd.merge(df_limit_byd.iloc[:,:13],df_stock_block.iloc[:,1:],on=['股票代码','股票名称'],how='left')
-    # dfres_e.fillna(0,inplace=True)
-    df_out = df_res.sort_values(by=['连板数','行业编码'],ascending=False)
-    df_out = df_out[['连板数','股票名称','日期','成交额','封板资金','流通市值','炸板次数','最后封板时间','所属行业']]
-    # df_out['成交额'] = df_out['成交额']/100000000
-    # df_out['封板资金'] = df_out['成交额']/100000000
-    # df_out['流通市值'] = df_out['成交额']/100000000
-    df_out['封成比'] = df_out['封板资金']/df_out['成交额']
-    df_out.round({'成交额':2,'封板资金':2,'流通市值':0,'封成比':0})
-    # ef.stock.get_latest_quote('')
-    from output_style_format import to_excel_auto_column_weight
-    with pd.ExcelWriter('~/Downloads/xtxtxt.xlsx',engine="openpyxl") as writer:
-        to_excel_auto_column_weight(df_out,writer,'板块涨停标的')
+    days,lbs=20,1
+
+    style_df,df =  get_stock_limitup_gantt(days,lbs)
+    # style_df.to_excel('~/Downloads/20220619-1.xlsx')
+    
+    # df_stock_block = get_stocks_block()
+    # dt_s,dt_e = '20220601','20220602'
+    # # df_s = get_part_analysis_lbs_promotion(df_stock_block,dt_s)
+    # df_e = get_part_analysis_blocklbs(df_stock_block,dt_e)
+
+    # df_stocks_byblock = get_block_stock_rise(df_stock_block,'BK0464',2)
+    # # df_block = get_block_inflow()
+    # df_limit_byd = get_stock_limitup_daily(2,'20220602').sort_values(by=['连板数'],ascending=False)
+    # # dfres_e =  pd.merge(df_block,df_e,on='行业编码',how='left')
+    # df_res =  pd.merge(df_limit_byd.iloc[:,:13],df_stock_block.iloc[:,1:],on=['股票代码','股票名称'],how='left')
+    # # dfres_e.fillna(0,inplace=True)
+    # df_out = df_res.sort_values(by=['连板数','行业编码'],ascending=False)
+    # df_out = df_out[['连板数','股票名称','日期','成交额','封板资金','流通市值','炸板次数','最后封板时间','所属行业']]
+    # # df_out['成交额'] = df_out['成交额']/100000000
+    # # df_out['封板资金'] = df_out['成交额']/100000000
+    # # df_out['流通市值'] = df_out['成交额']/100000000
+    # df_out['封成比'] = df_out['封板资金']/df_out['成交额']
+    # df_out.round({'成交额':2,'封板资金':2,'流通市值':0,'封成比':0})
+    # # ef.stock.get_latest_quote('')
+    # from output_style_format import to_excel_auto_column_weight
+    # with pd.ExcelWriter('~/Downloads/xtxtxt.xlsx',engine="openpyxl") as writer:
+    #     to_excel_auto_column_weight(df_out,writer,'板块涨停标的')
     # print(df_res)
     pass
