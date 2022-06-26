@@ -89,20 +89,28 @@ def get_stocks_block() -> pd.DataFrame:
     df_r.to_excel('板块股票清单.xlsx') #最新的板块股票对应关系表 下载到本地 下次直接加载excel
 
     return df_r
-# df_res.to_excel('out.xls',sheet_name='板块股票')
 
 if __name__ == '__main__':
     import urllib3
     urllib3.disable_warnings()
 
-    # df = get_stocks_block()
-    # df['日期'] = '20220527'
-    # # print(df)
-    # print(df)
-    datafile = '板块股票清单.xlsx'
-    dd = pd.DataFrame(pd.read_excel(datafile,converters={'股票代码':str}))
-    df_block = get_block_inflow()
-    print(df_block)
+    from sqlalchemy import create_engine
+    import pandas as pd
+    import pandas.io.sql as psql
+
+    engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
+    sql = '''
+      select * from stocks_block;
+      '''
+    df = pd.read_sql_query(sql, engine)
+    
+    if df.shape[0]<1:
+        df = get_stocks_block()
+        df.to_sql('stocks_block', engine, index= False,if_exists='replace')
+    print(df.shape)
+    # datafile = '板块股票清单.xlsx'
+    # dd = pd.DataFrame(pd.read_excel(datafile,converters={'股票代码':str}))
+
     pass
 
 

@@ -32,7 +32,6 @@ def calendar_stock(beg:str,end:str) -> pd.DataFrame:
     return df
 
 
-
 def get_calendar_lastday(beg: str, N: int, date:  str = None) -> str:
     '''
     获取指定指定日期的上N个交易日
@@ -76,6 +75,7 @@ def get_calendar_lastday(beg: str, N: int, date:  str = None) -> str:
 
     ms = calendar.loc[(calendar.index==dt_cur.index[0])]
     dt_pre = calendar.loc[(calendar.index == ms.index[0] - N)]
+ 
 
     return dt_pre.日期.tolist()[0]
 
@@ -86,16 +86,10 @@ if __name__ == '__main__':
     
     urllib3.disable_warnings()
 
-    end_dt = datetime.today().strftime('%Y%m%d')
-    # dt2 = get_calendar_lastday('20220401',1,'20220503')
+    dt_t = datetime.today().strftime('%Y-%m-%d')
+    tomorrow = (datetime.strptime(dt_t,'%Y-%m-%d') + timedelta(days= 1)).strftime('%Y-%m-%d')
+    calendar = calendar_stock('20050101', tomorrow.replace('-',''))
+    print(calendar['日期'][-1:]) 
 
-    dt_r = []
-    i=1
-    while i<10:
-        dt_t = get_calendar_lastday('20220401',i,end_dt)
-        
-        dt_r.append(dt_t.replace('-',''))
-        i += 1
 
-    print(dt_r)
     

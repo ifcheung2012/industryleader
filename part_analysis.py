@@ -4,12 +4,12 @@ from numpy import int64
 from blockinflow import get_block_inflow
 from blockstocks import get_stocks_block
 import efinance as ef
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from pandas import DataFrame, Int64Dtype
 from get_stock_limit import get_stock_dbs_daily , get_stock_limitup_daily
-from stockcalendar import get_calendar_lastday
+from stockcalendar import calendar_stock, get_calendar_lastday
 from pandas.io.formats.style import Styler
 
 def get_part_analysis_blocklbs(df_stock_block:pd.DataFrame,date:str) -> pd.DataFrame:
@@ -112,11 +112,11 @@ def get_stock_limitup_gantt(days,lbs):
         带样式数据(格式：Styler)，不带样式的数据（格式：dataframe）
     """
     end_dt = datetime.today().strftime('%Y%m%d')
-
-    dt_r,i,n,lbs = [],1,days,1
+    tomorrow = (datetime.strptime(end_dt,'%Y%m%d') + timedelta(days= 1)).strftime('%Y%m%d')
+    dt_r,i,n = [],1,days
 
     while i<n:
-        dt_t = get_calendar_lastday('20210101',i,end_dt)
+        dt_t = get_calendar_lastday('20210101',i,tomorrow)
         dt_r.append(dt_t.replace('-',''))
         i += 1
 
@@ -144,7 +144,7 @@ def get_stock_limitup_gantt(days,lbs):
 
     df5 = df4.loc[(df4.日期!='日期')]
     df5.insert(0,'股票名称',df5.pop('股票名称'))
-    df6 = df5.reindex(sorted(df5.columns), axis=1)
+    df6 = df5.fillna(0).reindex(sorted(df5.columns), axis=1)
 
     df7 = df6.sort_values(by=dt_range[::-1],ascending=True)
 
@@ -170,40 +170,57 @@ def get_stock_limitup_gantt(days,lbs):
         # styler.set_caption("期间连板情况排行")
         # styler.hide_index()
         return styler
-    df9 =  df8.loc[(df8['max']>4)] #只统计有过4板及以上的股票
+    df9 =  df8.loc[(df8['max']>=2)] #只统计有过4板及以上的股票
 
     return df9.style.pipe(makepretty),df9
+
+
 
 if __name__ == '__main__' :
     import urllib3
     urllib3.disable_warnings()
 
-    days,lbs=20,1
+    from sqlalchemy import create_engine
+    import pandas as pd
+    import pandas.io.sql as psql
 
-    style_df,df =  get_stock_limitup_gantt(days,lbs)
-    # style_df.to_excel('~/Downloads/20220619-1.xlsx')
+    engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
+
+    end_dt = datetime.today().strftime('%Y%m%d')
+    dt_t = get_calendar_lastday('20210101',0,end_dt)
     
-    # df_stock_block = get_stocks_block()
-    # dt_s,dt_e = '20220601','20220602'
-    # # df_s = get_part_analysis_lbs_promotion(df_stock_block,dt_s)
-    # df_e = get_part_analysis_blocklbs(df_stock_block,dt_e)
+    dt = dt_t.replace('-','')
+    df_limitup = get_stock_limitup_daily(1,dt)
 
-    # df_stocks_byblock = get_block_stock_rise(df_stock_block,'BK0464',2)
-    # # df_block = get_block_inflow()
-    # df_limit_byd = get_stock_limitup_daily(2,'20220602').sort_values(by=['连板数'],ascending=False)
-    # # dfres_e =  pd.merge(df_block,df_e,on='行业编码',how='left')
-    # df_res =  pd.merge(df_limit_byd.iloc[:,:13],df_stock_block.iloc[:,1:],on=['股票代码','股票名称'],how='left')
-    # # dfres_e.fillna(0,inplace=True)
-    # df_out = df_res.sort_values(by=['连板数','行业编码'],ascending=False)
-    # df_out = df_out[['连板数','股票名称','日期','成交额','封板资金','流通市值','炸板次数','最后封板时间','所属行业']]
-    # # df_out['成交额'] = df_out['成交额']/100000000
-    # # df_out['封板资金'] = df_out['成交额']/100000000
-    # # df_out['流通市值'] = df_out['成交额']/100000000
-    # df_out['封成比'] = df_out['封板资金']/df_out['成交额']
-    # df_out.round({'成交额':2,'封板资金':2,'流通市值':0,'封成比':0})
-    # # ef.stock.get_latest_quote('')
-    # from output_style_format import to_excel_auto_column_weight
-    # with pd.ExcelWriter('~/Downloads/xtxtxt.xlsx',engine="openpyxl") as writer:
-    #     to_excel_auto_column_weight(df_out,writer,'板块涨停标的')
-    # print(df_res)
+    df_limitup['首次封板时间'] = df_limitup['首次封板时间'].apply(lambda x:datetime.strptime(dt_t + ' '+x,'%Y-%m-%d %H:%M:%S'))
+    df_limitup['最后封板时间'] = df_limitup['最后封板时间'].apply(lambda x:datetime.strptime(dt_t + ' '+x,'%Y-%m-%d %H:%M:%S'))
+    
+
+    df_limitup['成交额'] = df_limitup['成交额']/100000000
+    df_limitup['封板资金'] = df_limitup['封板资金']/100000000
+    df_limitup['流通市值'] = df_limitup['流通市值']/100000000
+    df_limitup['封成比'] = df_limitup['封板资金'] / df_limitup['成交额']
+
+    df = df_limitup.round(1)
+    df = df.sort_values(by=['封板资金','成交额'],ascending=False)
+    df['时间']=datetime.today()
+
+    # 将新建的DataFrame储存为MySQL中的数据表，不储存index列
+    df.to_sql('daily_limitup', engine, index= False,if_exists='append')
+
+    print('Read from and write to Mysql table successfully!')
+
+    #日期初始化:每日09:25分全量更新 这里加个option 命令行可以选择一下
+    dt_t = datetime.today().strftime('%Y-%m-%d')
+    tomorrow = (datetime.strptime(dt_t,'%Y-%m-%d') + timedelta(days= 1)).strftime('%Y-%m-%d')
+
+    calendar = calendar_stock('20050101', tomorrow.replace('-',''))
+    # print(calendar['日期'][-1:])
+    calendar['日期'].to_sql('calendar',engine,if_exists='replace',index= False)
+
+    # 每日 沪深A股 行情信息
+    import efinance as ef
+    dff = ef.stock.get_realtime_quotes(fs=['沪深A股'])
+    dff.to_sql('daily_stock', engine, index= False,if_exists='append')
+
     pass
