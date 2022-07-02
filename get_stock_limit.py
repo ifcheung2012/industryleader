@@ -144,17 +144,17 @@ def get_stock_limitup_daily(lbs:int,date:str) -> pd.DataFrame:
 
 if __name__ == '__main__' :
     # print(get_stock_dbs_daily(3,'20220504'))
-    dfr = get_stock_limitup_daily(1,'20220624').sort_values(by=['连板数','炸板次数'],ascending=False)
+    df = get_stock_limitup_daily(1,'20220630').sort_values(by=['连板数','炸板次数'],ascending=False)
     
-    df = dfr.groupby('所属行业').apply(lambda x: x[x.封板资金==x.封板资金.max()])
-    df.index = df.index.droplevel() #去除重复的index
+    # df = dfr.groupby('所属行业').apply(lambda x: x[x.封板资金==x.封板资金.max()])
+    # df.index = df.index.droplevel() #去除重复的index
     df['成交额'] = df['成交额']/100000000
     df['封板资金'] = df['封板资金']/100000000
     df['流通市值'] = df['流通市值']/100000000
     df['封成比'] = df['封板资金'] / df['成交额']
     df = df.round(1)
     print(df.loc[(~df['股票名称'].str.contains('N'))&(~df['股票名称'].str.contains('ST'))&(~df['股票名称'].str.contains('退'))]) #非新股、非ST、非退市股票
-    # df.to_excel('~/Downloads/20220624-10.xlsx',index=False)
+    df.to_excel('~/Downloads/limitup20220630-6.xlsx',index=False)
     # print(get_zt_stock_rank())
     pass
 

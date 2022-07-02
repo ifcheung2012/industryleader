@@ -221,6 +221,7 @@ if __name__ == '__main__' :
     # 每日 沪深A股 行情信息
     import efinance as ef
     dff = ef.stock.get_realtime_quotes(fs=['沪深A股'])
+    dff['日期'] = datetime.today().strftime('%Y-%m-%d')
     dff.to_sql('daily_stock', engine, index= False,if_exists='append')
 
     pass
