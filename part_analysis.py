@@ -11,6 +11,8 @@ from pandas import DataFrame, Int64Dtype
 from get_stock_limit import get_stock_dbs_daily , get_stock_limitup_daily
 from stockcalendar import calendar_stock, get_calendar_lastday
 from pandas.io.formats.style import Styler
+from sqlalchemy import create_engine
+import pandas.io.sql as psql
 
 def get_part_analysis_blocklbs(df_stock_block:pd.DataFrame,date:str) -> pd.DataFrame:
     
@@ -174,15 +176,64 @@ def get_stock_limitup_gantt(days,lbs):
 
     return df9.style.pipe(makepretty),df9
 
+def get_stock_destribute():
+    engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
+
+    df = ef.stock.get_realtime_quotes(fs=['沪深A股'])
+    df['股票代码']
+
+    col = list(df.columns)
+    col.remove('股票代码')
+    col.remove('股票名称')
+    col.remove('行情ID')
+    col.remove('市场类型')
+    df[col] = df[col].apply(pd.to_numeric,errors='coerce').fillna(0.0)
+    # df.dtypes
+    df[col].astype(float)
+    df.dtypes
+    # df.to_sql('stock_daily_info', engine, index= False,if_exists='append')
+    sql =  'select * from db_stocks_block'
+    df_bs = pd.read_sql(sql,engine)
+    dx = df_bs.merge(df,on=['股票代码','股票名称'],how='inner')
+
+
+    d1 = dx.groupby(['所属行业']).apply(lambda x : x[x.涨跌幅>=9])
+    d2 = dx.groupby(['所属行业']).apply(lambda x : x[(x.涨跌幅>=5) & (x.涨跌幅<9)])
+    d3 = dx.groupby(['所属行业']).apply(lambda x : x[(x.涨跌幅>=0) & (x.涨跌幅<5)])
+    d4 = dx.groupby(['所属行业']).apply(lambda x : x[(x.涨跌幅>=-5) & (x.涨跌幅<0)])
+    d5 = dx.groupby(['所属行业']).apply(lambda x : x[(x.涨跌幅<=-5) & (x.涨跌幅>-9)])
+    d6 = dx.groupby(['所属行业']).apply(lambda x : x[(x.涨跌幅<=-9)])
+    d1.index = d1.index.droplevel() #去除重复的index
+    d2.index = d2.index.droplevel() #去除重复的index
+    d3.index = d3.index.droplevel() #去除重复的index
+    d4.index = d4.index.droplevel() #去除重复的index
+    d5.index = d5.index.droplevel() #去除重复的index
+    d6.index = d6.index.droplevel() #去除重复的index
+
+    dr1 = d1.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr1.rename(columns={'股票名称':'>=9%'},inplace=True)
+    dr2 = d2.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr2.rename(columns={'股票名称':'5%~9%'},inplace=True)
+    dr3 = d3.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr3.rename(columns={'股票名称':'0%~5%'},inplace=True)
+    dr4 = d4.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr4.rename(columns={'股票名称':'-5%~0%'},inplace=True)
+    dr5 = d5.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr5.rename(columns={'股票名称':'-5%~-9%'},inplace=True)
+    dr6 = d6.groupby(['所属行业']).agg({'股票名称':'count'}).reset_index()
+    dr6.rename(columns={'股票名称':'<=-9%'},inplace=True)
+
+    dfr = [dr1,dr2,dr3,dr4,dr5,dr6]
+
+    from functools import reduce
+    dfrr = reduce(lambda x,y:pd.merge(x,y,on='所属行业',how='outer'),dfr)
+
+    return dfrr.sort_values(by=['>=9%','5%~9%','0%~5%','-5%~0%','-5%~-9%','<=-9%'],ascending=False)
 
 
 if __name__ == '__main__' :
     import urllib3
     urllib3.disable_warnings()
-
-    from sqlalchemy import create_engine
-    import pandas as pd
-    import pandas.io.sql as psql
 
     engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
 
@@ -223,5 +274,29 @@ if __name__ == '__main__' :
     dff = ef.stock.get_realtime_quotes(fs=['沪深A股'])
     dff['日期'] = datetime.today().strftime('%Y-%m-%d')
     dff.to_sql('daily_stock', engine, index= False,if_exists='append')
+
+    # 各板块涨停分布
+    from datetime import datetime, timedelta
+    dt_t = datetime.today().strftime('%Y-%m-%d %H:%M:%S').replace(':','_')
+    df1 = get_stock_destribute()
+
+    days,lbs=10,1
+    df2 =  pd.DataFrame()
+    style_df,df2 =  get_stock_limitup_gantt(days,lbs)
+    
+    df_stock_block = get_stocks_block()
+
+    from datetime import datetime, timedelta
+    dt = datetime.today().strftime('%Y-%m-%d').replace('-','')
+    dt_t = datetime.today().strftime('%Y-%m-%d %H:%M:%S').replace(':','_')
+    df3 = get_part_analysis_lbs_promotion(df_stock_block,dt)
+
+    with pd.ExcelWriter('~/Desktop/数据分析/每日复盘'+ dt_t +'.xlsx',engine='openpyxl') as writer:
+        df.to_excel(writer,sheet_name='今日涨停',index=False)
+        df1.to_excel(writer,sheet_name='行业梯队',index=False)
+        style_df.to_excel(writer,sheet_name='甘特图',index=False)
+        df3.to_excel(writer,sheet_name='连板晋级',index=False)
+        
+
 
     pass
