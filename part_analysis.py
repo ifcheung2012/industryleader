@@ -258,8 +258,12 @@ if __name__ == '__main__' :
 
     # 将新建的DataFrame储存为MySQL中的数据表，不储存index列
     df.to_sql('daily_limitup', engine, index= False,if_exists='append')
-
     print('Read from and write to Mysql table successfully!')
+
+    # 整理成连板高度交叉表
+    x = df.groupby(['所属行业','连板数'])['股票名称'].unique()
+    g = x.unstack()
+    r = g.reset_index().fillna('')
 
     #日期初始化:每日09:25分全量更新 这里加个option 命令行可以选择一下
     dt_t = datetime.today().strftime('%Y-%m-%d')
@@ -289,13 +293,14 @@ if __name__ == '__main__' :
     from datetime import datetime, timedelta
     dt = datetime.today().strftime('%Y-%m-%d').replace('-','')
     dt_t = datetime.today().strftime('%Y-%m-%d %H:%M:%S').replace(':','_')
-    df3 = get_part_analysis_lbs_promotion(df_stock_block,dt)
+    # df3 = get_part_analysis_lbs_promotion(df_stock_block,dt)
 
     with pd.ExcelWriter('~/Desktop/数据分析/每日复盘'+ dt_t +'.xlsx',engine='openpyxl') as writer:
         df.to_excel(writer,sheet_name='今日涨停',index=False)
         df1.to_excel(writer,sheet_name='行业梯队',index=False)
         style_df.to_excel(writer,sheet_name='甘特图',index=False)
-        df3.to_excel(writer,sheet_name='连板晋级',index=False)
+        # df3.to_excel(writer,sheet_name='连板晋级',index=False)
+        r.to_excel(writer,sheet_name='连板高度',index=False)
         
 
 

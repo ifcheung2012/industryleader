@@ -27,6 +27,8 @@ def calendar_stock(beg:str,end:str) -> pd.DataFrame:
     ------
     ``['索引index', '日期']``
     '''
+    if end is None:
+        end = datetime.today().strftime('%Y-%m-%d')
     
     df=ef.stock.get_quote_history('600519',beg==beg,end=end)
     return df
