@@ -15,7 +15,6 @@ from sqlalchemy import create_engine
 import pandas.io.sql as psql
 
 def get_part_analysis_blocklbs(df_stock_block:pd.DataFrame,date:str) -> pd.DataFrame:
-    
 
     dfr = get_stock_limitup_daily(1,date) #连板数>=1,=1时即首板;
 
@@ -256,6 +255,10 @@ if __name__ == '__main__' :
     df = df.sort_values(by=['封板资金','成交额'],ascending=False)
     df['时间']=datetime.today()
 
+    from task_auto_daily import get_formated_ticks
+    df_all_ticks = get_formated_ticks(df['股票代码'])
+    df_A = pd.merge(df,df_all_ticks,how='left',left_on='股票代码',right_on='代码')
+
     # 将新建的DataFrame储存为MySQL中的数据表，不储存index列
     df.to_sql('daily_limitup', engine, index= False,if_exists='append')
     print('Read from and write to Mysql table successfully!')
@@ -297,6 +300,7 @@ if __name__ == '__main__' :
 
     with pd.ExcelWriter('~/Desktop/数据分析/每日复盘'+ dt_t +'.xlsx',engine='openpyxl') as writer:
         df.to_excel(writer,sheet_name='今日涨停',index=False)
+        df_A.to_excel(writer,sheet_name='涨停分时',index=False)
         df1.to_excel(writer,sheet_name='行业梯队',index=False)
         style_df.to_excel(writer,sheet_name='甘特图',index=False)
         # df3.to_excel(writer,sheet_name='连板晋级',index=False)

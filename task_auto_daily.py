@@ -7,7 +7,6 @@ import pandas as pd
 import random
 import time
 
-
 def get_trade_date(beg,end):
     cc_df = ak.tool_trade_date_hist_sina()
     cc_df['trade_date'] = pd.to_datetime(cc_df['trade_date'],format='%Y-%m-%d')
@@ -71,6 +70,28 @@ def get_stock_tick_data(code):
     df['涨幅']=df['差额'].cumsum()/price_kp
     return df
 
+def get_tick_data(code):
+    df = ak.stock_zh_a_hist_pre_min_em(symbol=code, start_time="09:15:00", end_time="15:00:00")
+    df['代码']=code
+    df['差额']=df['收盘'].diff()
+    df = df.fillna(0)
+    price_kp = df[:1]['开盘'][0]
+    df['涨幅']=df['差额'].cumsum()/price_kp
+
+    return df
+
+def get_formated_ticks(codelst):
+    df_lst = []
+    for x in codelst:
+        df=get_tick_data(x)
+        df1 = df[['涨幅']]
+        df2 = df1.T.reset_index()
+        df2['代码'] = x
+        del df2['index']
+        df_lst.append(df2)
+
+    return reduce(lambda x,y:pd.concat([x,y],ignore_index=True),df_lst)
+
 def get_ticks_daily_info(lst_dfs):
     lst = []
 
@@ -83,6 +104,87 @@ def get_ticks_daily_info(lst_dfs):
 
     df = reduce(lambda x,y:pd.concat([x,y],ignore_index=True),lst)
     return df
+
+def info_change_history():
+    engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
+
+    df_concept_ths_today = ak.stock_board_concept_name_ths()
+    df_concept_ths_today = df_concept_ths_today.drop_duplicates(subset=['代码'])
+
+    #概念成分股关系-今日
+    dflist = []
+    for concept in df_concept_ths_today['代码']:
+        dft = ak.stock_board_cons_ths(symbol=concept)
+        dft['概念代码'] = concept
+        dft['概念名称'] = df_concept_ths_today.loc[(df_concept_ths_today.代码 == concept)]['概念名称'].iloc[0]
+        dflist.append(dft)
+        time.sleep(random.randint(1,10))
+
+    df_concept_stock_today = reduce(lambda x,y:pd.concat([x,y]),dflist)
+    df_concept_stock_today['日期']=datetime.today().strftime('%Y-%m-%d')
+
+    #概念-昨日
+    sql_concept_ths_yesterday = 'select * from concept_ths'
+    df_concept_ths_yesterday =  pd.read_sql(sql_concept_ths_yesterday,engine)
+    #概念成分股关系-昨日
+    sql_concept_stock_yesterday = 'select * from concept_stock'
+    df_concept_stock_yesterday =  pd.read_sql(sql_concept_stock_yesterday,engine)
+
+
+    #今日概念清单入库
+    df_concept_ths_today.to_sql('concept_ths', engine, index= False,if_exists='replace')
+    #今日概念成分股关系入库
+    df_concept_stock_today.to_sql('concept_stock', engine, index= False,if_exists='replace')
+
+    #今日概念差异入库
+    #概念-今日昨日差异
+    df_c_x = df_concept_ths_today[['概念名称','代码']]
+    df_c_y = df_concept_ths_yesterday[['概念名称','代码']]
+    df_c_x['x'],df_c_y['x'] = 1,1
+    df_c_x.set_index(['概念名称','代码'],inplace=True)
+    df_c_y.set_index(['概念名称','代码'],inplace=True)
+    df_c_y.sort_values(by=['代码'])
+    df_c_x.sort_values(by=['代码'])
+    c_left,c_right = df_c_x.align(df_c_y,join='outer',axis=0)
+    # 昨日减少的 todo 过滤ST 退市股票等
+    df_concept_diff_1 = c_left[c_left['x'].isna()]
+    df_concept_diff_1.reset_index(inplace=True)
+    df_concept_diff_1['异动内容'] = '[概念删除]'+ df_concept_diff_1['概念名称']
+    # 今日新增的
+    df_concept_diff_2 = c_right[c_right['x'].isna()]
+    df_concept_diff_2.reset_index(inplace=True)
+    df_concept_diff_2['异动内容'] = '[概念新增]'+ df_concept_diff_2['概念名称']
+    # 最终的概念差异结果
+    df_concept_diff_res = pd.concat([df_concept_diff_1[['概念名称','代码']],df_concept_diff_2[['概念名称','代码']]])
+
+    #概念成分股-今日昨日差异
+    df_x = df_concept_stock_today[['代码','概念名称']]
+
+    df_y = df_concept_stock_yesterday[['代码','概念名称']]
+    df_x.rename({'代码':'股票代码'},axis=1,inplace=True)
+    df_y.rename({'代码':'股票代码'},axis=1,inplace=True)
+    df_x['x'],df_y['x'] = 1,1
+    df_x.set_index(['股票代码','概念名称'],inplace=True)
+    df_y.set_index(['股票代码','概念名称'],inplace=True)
+    df_y.sort_values(by=['股票代码'])
+    df_x.sort_values(by=['股票代码'])
+    left,right = df_x.align(df_y,join='outer',axis=0)
+    # 昨日减少的 todo 过滤ST 退市股票等
+    df_concept_stock_diff_1 = left[left['x'].isna()]
+    df_concept_stock_diff_1.reset_index(inplace=True)
+    df_concept_stock_diff_1['异动内容'] = '[个股删除概念]'+ df_concept_stock_diff_1['概念名称']
+    # 今日新增的
+    df_concept_stock_diff_2 = right[right['x'].isna()]
+    df_concept_stock_diff_2.reset_index(inplace=True)
+    df_concept_stock_diff_2['异动内容'] = '[个股添加概念]'+ df_concept_stock_diff_2['概念名称']
+    # 最终的概念股票差异结果
+    df_concept_stock_diff_res = pd.concat([df_concept_stock_diff_1[['股票代码','概念名称','异动内容']],df_concept_stock_diff_2[['股票代码','概念名称','异动内容']]])
+    df_concept_stock_diff_res.rename({'股票代码':'代码'},axis=1,inplace=True)
+
+    df_diff_res = pd.concat([df_concept_diff_res,df_concept_stock_diff_res])
+    # 将标记差异日期并持久化
+    df_diff_res['日期'] = datetime.today().strftime('%Y-%m-%d')
+    df_diff_res.to_sql('concept_stock_change', engine, index= False,if_exists='append')
 
 def data_to_sql(beg,end):
     
@@ -98,12 +200,20 @@ def data_to_sql(beg,end):
     # 将今日涨停行情 涨停、跌停、昨日涨停、今日炸板的股票的每分钟成交额存入数据库
     res_df_daily_tick = get_ticks_daily_info([res_df_zt_lst, res_df_zt_pre_lst,res_df_zbgc_lst,res_df_dtgc_lst])
     res_df_daily_tick.to_sql('stocks_daily_ticks', engine, index= False,if_exists='append')
+    # 比对今日和昨日的概念、个股概念有哪些异动，并持久化
+    info_change_history()
+
+
 
 if __name__ == '__main__' :
     import urllib3
     urllib3.disable_warnings()
-    dt_b = datetime.now().strftime('%Y-%m-%d')
     dt_today = datetime.now().strftime('%Y-%m-%d')
+
     data_to_sql(dt_today,dt_today)
-    print('Data between %s and %s has been inserted into sql' % (dt_b,dt_today))
+    print('Data in %s has been inserted into sql' % dt_today)
+
+    # res_df_zt_lst, res_df_zt_pre_lst,res_df_zbgc_lst,res_df_dtgc_lst= get_daily_info('2022-08-12','2022-08-12')
+    # df = get_formated_ticks(res_df_zt_lst['代码'])
+    # print(df)
     pass
