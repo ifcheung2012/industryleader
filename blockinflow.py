@@ -75,8 +75,16 @@ def get_block_inflow(date: str = None) -> pd.DataFrame:
     return df
 
 if __name__ == '__main__':
-    import urllib3
-    urllib3.disable_warnings()
+    # import urllib3
+    # urllib3.disable_warnings()
 
-    df_block = get_block_inflow()
-    print(df_block)
+    # df_block = get_block_inflow()
+    # print(df_block)
+    import os
+    dirs = ['pages']
+    modules = []
+    for parent,dirnames,filenames in os.walk('pages'):
+        for filename in filenames:
+            if filename.endswith('callback.py'):
+                modules.append(os.path.join(parent,filename).replace('.py','').replace('/','.'))
+    print(modules)

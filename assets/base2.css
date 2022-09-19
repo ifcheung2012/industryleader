@@ -22,7 +22,9 @@
 - Clearing
 - Media Queries
 */
-
+#wrapper .five .columns {
+  width: 24.625%;
+}
 /* Grid */
 .container {
   position: relative;

@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 import pandas.io.sql as psql
 
 def get_part_analysis_blocklbs(df_stock_block:pd.DataFrame,date:str) -> pd.DataFrame:
-
+    #todo 不在交易日 即使cron有调度 也不执行；
     dfr = get_stock_limitup_daily(1,date) #连板数>=1,=1时即首板;
 
     fd = pd.merge(dfr,df_stock_block,on='股票代码',how='left').rename({'所属行业_x':'所属行业'},axis=1)
@@ -280,7 +280,7 @@ if __name__ == '__main__' :
     import efinance as ef
     dff = ef.stock.get_realtime_quotes(fs=['沪深A股'])
     dff['日期'] = datetime.today().strftime('%Y-%m-%d')
-    dff.to_sql('daily_stock', engine, index= False,if_exists='append')
+    dff.to_sql('daily_stock', engine, index= False,if_exists='replace')
 
     # 各板块涨停分布
     from datetime import datetime, timedelta
