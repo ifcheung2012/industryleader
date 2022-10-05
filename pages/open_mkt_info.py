@@ -31,34 +31,45 @@ def get_fund_flow():
 
 def create_layout():
     engine = create_engine(f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8')
-    sql_concept_change = """select a.*,f.`股票名称` from concept_stock_change a 
-INNER JOIN ( SELECT DISTINCT 股票代码,股票名称 FROM daily_stock ) AS f ON a.代码 = f.股票代码 
-where a.日期 in (select max(日期) from concept_stock_change) and  a.代码 in 
-                            ( SELECT 代码
-                                FROM
-                                    (
-                                    SELECT
-                                        concept_stock_change.日期,
-                                        concept_stock_change.代码,
-                                        b.名称,
-                                        concept_stock_change.异动内容,
-                                        substring(concept_stock_change.异动内容,9) as 异动
-                                    FROM
-                                        concept_stock_change
-                                        INNER JOIN ( SELECT DISTINCT 代码,名称 FROM concept_stock ) AS b ON concept_stock_change.代码 = b.代码 
-                                    ) AS c 
-                                WHERE
-                                    c.异动内容 <> '[个股添加概念]标普道琼斯A股' 
-                                    AND c.名称 NOT LIKE '%ST%' 
-                                    AND c.名称 NOT LIKE '%退%' 
-                                    AND c.代码 <> '暂无成份股数据' 
-                                    AND left(c.代码,1) <> 8
-                                    AND left(c.代码,1) <> 3
-                                    AND left(c.代码,1) <> 6
-                                    AND c.日期 in (select max(日期) from concept_stock_change)
-                                GROUP BY c.日期,c.代码,c.名称,c.异动
-                                HAVING count(*)<2
-                            ) """
+    sql_concept_change = """select aa.`代码`,bb.`股票名称`,cc.异动内容,aa.`近一周`,aa.`近20天`,aa.`近一个月` from (select a.`代码`,a.`近一周`,b.`近20天`,c.`近一个月` from 
+                    (
+                    select abc.代码,count(*) AS 近一周 from (
+                    select 日期,代码,count(代码) from concept_stock_change 
+                    where DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(日期)
+                    AND 代码 in (select distinct 代码 from concept_stock_change where TO_DAYS(NOW()) - TO_DAYS(日期) <1 )
+                    GROUP BY 日期,代码 ) as abc GROUP BY abc.代码
+                    ) as a
+                    left join 
+                    -- 近20天
+                    (
+                    select bbc.代码,count(*) AS 近20天 from (
+                    select 日期,代码,count(代码)  from concept_stock_change 
+                    where DATE_SUB(CURDATE(), INTERVAL 20 DAY) <= date(日期)
+                    AND 代码 in (select distinct 代码 from concept_stock_change where TO_DAYS(NOW()) - TO_DAYS(日期) <1 )
+                    GROUP BY 日期,代码) as bbc GROUP BY bbc.代码
+                    ) as b on a.`代码`=b.`代码`
+                    left join 
+                    -- 近一个月
+                    (
+                    select cbc.代码,count(*) AS 近一个月 from (
+                    select 日期,代码,count(代码)  from concept_stock_change 
+                    where DATE_SUB(CURDATE(), INTERVAL 30 DAY) <= date(日期)
+                    AND 代码 in (select distinct 代码 from concept_stock_change where TO_DAYS(NOW()) - TO_DAYS(日期) <1 )
+                    GROUP BY 日期,代码) as cbc GROUP BY cbc.代码
+                    ) as c on a.`代码`=c.`代码`
+                    ) as aa
+                    left join (select distinct 股票代码,股票名称 from  daily_stock) as bb on aa.`代码`=bb.`股票代码`
+                    left join (select 代码,GROUP_CONCAT(异动内容) as '异动内容' from concept_stock_change where TO_DAYS(NOW()) - TO_DAYS(日期) <1
+                    GROUP BY 代码) as cc on aa.`代码`=cc.`代码`
+                    where
+                        cc.异动内容 <> '[个股添加概念]标普道琼斯A股' 
+                        AND bb.股票名称 NOT LIKE '%ST%' 
+                        AND bb.股票名称 NOT LIKE '%退%' 
+                        AND aa.代码 <> '暂无成份股数据' 
+                        AND left(aa.代码,1) <> 8
+                        AND left(aa.代码,1) <> 3
+                        AND left(aa.代码,3) <> 688
+                    ORDER BY 近一个月,近20天,近一周"""
 
     #当日热股清单
     df_stock_hot = pd.read_excel('data/hotstock.xlsx',converters={'股票代码':str})
@@ -66,11 +77,9 @@ where a.日期 in (select max(日期) from concept_stock_change) and  a.代码 i
     df_h = df_table_hot.head(10)
     #异动板块、股票清单
     df_stock_yd = pd.read_sql(text(sql_concept_change),engine)
-    df_table_yd = df_stock_yd[['代码','股票名称','日期','异动内容']]
-    df_y = df_table_yd
-    df_y['近一周异动次数']=randint(1,10)
-    df_y['近一个月异动次数']=randint(1,10)
-    df_y['近两个月异动次数'] = randint(1,10)
+    # df_table_yd = df_stock_yd[['代码','股票名称','日期','异动内容']]
+    df_y = df_stock_yd
+
     #猪肉批发价行情
     df_zr = ak.futures_pig_info()
     #可视化猪肉批发价走势

@@ -4,6 +4,9 @@ from dash import dash_table
 from utils import make_dash_table
 import akshare as ak
 from datetime import datetime, timedelta
+from pages.subpages import (
+    pre_mkt_plan
+)
 
 def create_layout():
     dt_yesterday = (datetime.today()- timedelta(days= 1)).strftime('%Y-%m-%d').replace('-','')
@@ -16,7 +19,8 @@ def create_layout():
     df_cls_d = ak.stock_telegraph_cls()
     df_cls_d['发布日期'] = df_cls_d['发布日期'].replace('-','')
     df_cls = df_cls_d[['发布日期','标题']] #,'发布时间'
-    df_cls_t = df_cls.head(10)
+    df_cls_t = df_cls.loc[~(df_cls.标题.str.strip()=='')]
+    df_cls_a = df_cls_t.head(10)
     
     return html.Div(
                     [
@@ -87,7 +91,7 @@ def create_layout():
                                             html.H6(
                                                     ["早盘资讯"], className="subtitle padded"
                                             ),
-                                            html.Table(make_dash_table(df_cls_t))
+                                            html.Table(make_dash_table(df_cls_a))
                                         ],className='six columns',
                                     )
                                 ],className='row'),
@@ -121,6 +125,7 @@ def create_layout():
                                             
                                         ],className="twelve columns")
                                 ],className='row'),
+                                pre_mkt_plan.create_layout(),
                             ],className="sub_page")
                     ],
                     className="page"

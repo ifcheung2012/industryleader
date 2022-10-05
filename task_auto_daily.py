@@ -146,7 +146,7 @@ def info_change_history():
     df_c_y.sort_values(by=['代码'])
     df_c_x.sort_values(by=['代码'])
     c_left,c_right = df_c_x.align(df_c_y,join='outer',axis=0)
-    # 昨日减少的 todo 过滤ST 退市股票等
+    # 昨日减少的 TODO 过滤ST 退市股票等
     df_concept_diff_1 = c_left[c_left['x'].isna()]
     df_concept_diff_1.reset_index(inplace=True)
     df_concept_diff_1['异动内容'] = '[概念删除]'+ df_concept_diff_1['概念名称']
@@ -169,7 +169,7 @@ def info_change_history():
     df_y.sort_values(by=['股票代码'])
     df_x.sort_values(by=['股票代码'])
     left,right = df_x.align(df_y,join='outer',axis=0)
-    # 昨日减少的 todo 过滤ST 退市股票等
+    # 昨日减少的 TODO 过滤ST 退市股票等
     df_concept_stock_diff_1 = left[left['x'].isna()]
     df_concept_stock_diff_1.reset_index(inplace=True)
     df_concept_stock_diff_1['异动内容'] = '[个股删除概念]'+ df_concept_stock_diff_1['概念名称']

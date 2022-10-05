@@ -63,8 +63,8 @@ def get_block_stocks_by_hybk(hybk: str = None) -> pd.DataFrame:
 def get_stocks_block() -> pd.DataFrame:
     """
     获取 今天 所有行业板块下的股票代码 约4k多只 
-    #todo 目前未区分 主板、创业板、科创板及ST
-    #todo 这部分数据仅能每日获取 建议最好存到数据库里
+    #TODO 目前未区分 主板、创业板、科创板及ST
+    #TODO 这部分数据仅能每日获取 建议最好存到数据库里
     Parameters
     ----------
     Returns

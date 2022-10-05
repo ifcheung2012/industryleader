@@ -10,7 +10,7 @@ from utils import make_dash_table
 import akshare as ak
 from environment.settings import *
 from pages.subpages import (
-    limitup_info
+    limitup_info,short_term_statics
 )
 
 color_1 = "#892421"
@@ -117,6 +117,7 @@ def create_layout():
                                 ],className='row'),
                                 
                                 limitup_info.create_layout(),
+                                short_term_statics.create_layout(),
                             ],className='sub_page')
                         ],className='page'
                     )

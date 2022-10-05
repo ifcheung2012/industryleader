@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine,text
 import pandas as pd
 
-# todo 添加以下几个条件限制
+# TODO 添加以下几个条件限制
 # 流通市值小于百亿 ；
 # 当前价格处于低位;
 # 整个周期在4个月内 最高价排名前2的两个交易日，两交易日相隔22个交易日；
@@ -33,7 +33,7 @@ def compare_price_volume(code,period,gap):
     df_b = stock_zh_a_hist_df_b['最高'].max()
 
 
-    df_a_l = stock_zh_a_hist_df_a[stock_zh_a_hist_df_a['最高']==stock_zh_a_hist_df_a['最高'].max()] #todo 这里写错了 应该是最高价匹配的成交量 而不是其他成交量；
+    df_a_l = stock_zh_a_hist_df_a[stock_zh_a_hist_df_a['最高']==stock_zh_a_hist_df_a['最高'].max()] #TODO 这里写错了 应该是最高价匹配的成交量 而不是其他成交量；
     df_b_l = stock_zh_a_hist_df_b[stock_zh_a_hist_df_b['最高']==stock_zh_a_hist_df_b['最高'].max()]
     df_a_l['代码'],df_b_l['代码']=code,code
     df_a_dt,df_b_dt = df_a_l['日期'].iat[0],df_b_l['日期'].iat[0]
