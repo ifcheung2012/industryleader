@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from importlib import import_module
 import os
 from dash import Dash
+from markupsafe import escape
 from dash import dcc,html
 from pages import (
     pre_mkt_info,

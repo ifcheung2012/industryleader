@@ -17,7 +17,7 @@ color_1 = "#892421"
 
 
 def create_layout():
-    engine = create_engine(f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8')
+    engine = create_engine(f'mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
 
     sql_limitup_history = 'select * from stocks_limitup_history'
     sql_concept_stocks = 'select * from concept_stocks'

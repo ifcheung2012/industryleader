@@ -72,7 +72,7 @@ def get_stock_pool_model_A():
 
     return df_stock_pool
     
-/Users/zif/Downloads/github/industryleader/tasks/stock_pool.py
+
 if __name__ == '__main__':
     engine = create_engine('mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
     df_stock_pool = get_stock_pool_model_A()

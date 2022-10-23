@@ -26,11 +26,11 @@ def get_fund_flow():
     df_flow_res = reduce(lambda x,y:pd.concat([x,y],ignore_index=False),df_flow_lst)
     except_lst = ['融资融券','深股通','标普道琼斯A股','MSCI概念','同花顺漂亮100','半年报预增','沪股通','证金持股','华为概念']
     df_flow_res = df_flow_res.loc[(~df_flow_res.行业.isin(except_lst))]
-
+    
     return df_flow_res
 
 def create_layout():
-    engine = create_engine(f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8')
+    engine = create_engine(f'mysql+pymysql://root:123456789@localhost:3306/mysql?charset=utf8')
     sql_concept_change = """select aa.`代码`,bb.`股票名称`,cc.异动内容,aa.`近一周`,aa.`近20天`,aa.`近一个月` from (select a.`代码`,a.`近一周`,b.`近20天`,c.`近一个月` from 
                     (
                     select abc.代码,count(*) AS 近一周 from (
